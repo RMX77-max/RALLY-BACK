@@ -5,6 +5,7 @@ use App\Http\Controllers\TiempoController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompetidorController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\CronometroController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,18 +24,21 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/competidores', [CompetidorController::class, 'store']);
 
 Route::get('/competidores', [CompetidorController::class, 'index']);
-
+// Rutas para tiempos
 Route::post('/tiempos/batch', [TiempoController::class, 'storeBatch']);
 Route::get('/tiempos/etapa/{etapa}', [TiempoController::class, 'porEtapa']);
 Route::put('/competidores/{ci}', [CompetidorController::class, 'update']);
 Route::delete('/competidores/{ci}', [CompetidorController::class, 'destroy']);
 Route::get('/tiempos/general', [TiempoController::class, 'clasificacionGeneral']);
 
-
-
-
+// Rutas para eventos
 Route::get('/eventos', [EventoController::class, 'index']);
 Route::post('/eventos', [EventoController::class, 'store']);
 Route::get('/eventos/{id}', [EventoController::class, 'show']);
 Route::put('/eventos/{id}', [EventoController::class, 'update']);
 Route::delete('/eventos/{id}', [EventoController::class, 'destroy']);
+
+// Rutas para cronómetros
+Route::post('/cronometro/iniciar', [CronometroController::class, 'iniciar']);
+Route::get('/cronometro/tiempo-actual', [CronometroController::class, 'tiempoActual']);
+Route::post('/cronometro/detener', [CronometroController::class, 'detener']);
