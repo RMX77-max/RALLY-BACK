@@ -2,29 +2,38 @@ FROM webdevops/php-nginx:8.2
 
 WORKDIR /app
 
-# Extensiones necesarias (Postgres)
+# Extensiones necesarias (Postgres) y utilidades
 RUN apt-get update && apt-get install -y \
     git unzip libpq-dev \
  && docker-php-ext-install pdo pdo_pgsql \
  && rm -rf /var/lib/apt/lists/*
 
-# (Opcional) extensiones útiles si tu app las necesita:
-# RUN docker-php-ext-install bcmath intl exif
+# (Opcional) instala otras extensiones si tu app las necesita:
+# RUN docker-php-ext-install bcmath intl exif gd
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copia proyecto
+# Copia el proyecto
 COPY . .
 
-# Instala dependencias prod
+# Instala dependencias de producción
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Asegura permisos de escritura en storage y cache
-RUN chown -R application:application /app \
- && mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache
+# Crea y fija permisos en directorios que Laravel necesita escribir
+RUN mkdir -p \
+      storage/logs \
+      storage/framework/cache \
+      storage/framework/sessions \
+      storage/framework/views \
+      bootstrap/cache \
+  && chown -R application:application /app \
+  && chmod -R 775 storage bootstrap/cache
 
 # Nginx servirá /public
 ENV WEB_DOCUMENT_ROOT=/app/public
+
+# Asegura que arranque Nginx + PHP-FPM vía supervisord
+CMD ["supervisord"]
 
 EXPOSE 8080
