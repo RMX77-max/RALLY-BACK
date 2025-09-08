@@ -10,83 +10,121 @@ use Illuminate\Support\Facades\DB;
 
 class CompetidorController extends Controller
 {
+
     public function store(Request $request)
-{
-    try {
-        Log::info('Datos recibidos:', $request->all()); // Registra los datos entrantes
+    {
+        try {
+            Log::info('Datos recibidos:', $request->all());
 
-        $validated = $request->validate([
-            'ci' => 'required|unique:competidores',
-            'nombre' => 'required',
-            'ciudad' => 'required',
-            'categoria' => 'required',
-            'numeral' => 'required|numeric',
-        ]);
+            $validated = $request->validate([
+                'ci' => 'required|unique:competidores',
+                'nombre' => 'required',
+                'ciudad' => 'required',
+                'categoria' => 'required',
+                'numeral' => 'required|numeric',
+                'evento_id' => 'required|exists:eventos,id',
+            ]);
 
-        $fotoPath = null;
-        if ($request->hasFile('foto')) {
-            Log::info('Archivo recibido:', [$request->file('foto')->getClientOriginalName()]);
-            $fotoPath = $request->file('foto')->store('fotos_competidores', 'public');
-            Log::info('Ruta de foto guardada:', [$fotoPath]);
+            $fotoPath = null;
+            if ($request->hasFile('foto')) {
+                $fotoPath = $request->file('foto')->store('fotos_competidores', 'public');
+            }
+
+            $competidor = Competidor::create([
+                'ci' => $validated['ci'],
+                'nombre' => $validated['nombre'],
+                'ciudad' => $validated['ciudad'],
+                'team' => $request->team,
+                'categoria' => $validated['categoria'],
+                'numeral' => $validated['numeral'],
+                'tipodesangre' => $request->tipodesangre,
+                'foto_path' => $fotoPath,
+                'evento_id' => $validated['evento_id']
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $competidor
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error en store: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno: '.$e->getMessage()
+            ], 500);
         }
+    }
 
-        $competidor = Competidor::create([
-            'ci' => $validated['ci'],
-            'nombre' => $validated['nombre'],
-            'ciudad' => $validated['ciudad'],
-            'team' => $request->team,
-            'categoria' => $validated['categoria'],
-            'numeral' => $validated['numeral'],
-            'tipodesangre' => $request->tipodesangre,
-            'foto_path' => $fotoPath,
-        ]);
+    public function index(Request $request)
+    {
+        try {
+            $query = Competidor::query();
 
-        Log::info('Competidor creado:', $competidor->toArray());
+            if ($request->filled('evento_id')) {
+                $query->where('evento_id', $request->evento_id);
+            } else {
+                return response()->json([
+                    'error' => 'Debe enviar evento_id en la peticion'
+                ], 400);
+            }
 
-        return response()->json([
-            'success' => true,
-            'data' => $competidor
-        ], 201);
+            if ($request->filled('categoria')) {
+                $query->where('categoria', $request->categoria);
+            }
 
-    } catch (\Exception $e) {
-        Log::error('Error en store: '.$e->getMessage());
+            $sortField = $request->input('sort_field', 'numeral');
+            $sortDirection = $request->input('sort_direction', 'asc');
+
+            $query->orderBy($sortField, $sortDirection);
+
+            return $query->paginate($request->per_page ?? 10);
+
+        } catch (\Exception $e) {
+            Log::error('Error en CompetidorController@index: '.$e->getMessage());
+            return response()->json([
+                'error' => 'Error al filtrar competidores',
+                'details' => env('APP_DEBUG') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+   public function update(Request $request, $ci)
+{
+    $competidor = Competidor::findOrFail($ci);
+
+    // Verifica que el evento_id del competidor coincida con el que se está enviando
+    if ($request->filled('evento_id') && $competidor->evento_id != $request->evento_id) {
         return response()->json([
             'success' => false,
-            'message' => 'Error interno: '.$e->getMessage()
-        ], 500);
+            'message' => 'No tienes permiso para actualizar este competidor (evento no coincide)',
+        ], 403);
     }
+
+    $competidor->update($request->all());
+
+    return response()->json([
+        'success' => true,
+        'data' => $competidor,
+    ]);
 }
 
-public function index(Request $request)
+
+   public function destroy(Request $request, $ci)
 {
-    try {
-        $query = Competidor::query();
+    $competidor = Competidor::findOrFail($ci);
 
-        // Filtro por ciudad
-        if ($request->filled('ciudad')) {
-            $query->where('ciudad', 'like', '%' . $request->ciudad . '%');
-        }
-
-        // Filtro por categoría (exacto)
-        if ($request->filled('categoria')) {
-            $query->where('categoria', $request->categoria);
-        }
-
-    // Ordenando por numeral
-    $sortField = $request->input('sort_field', 'numeral'); // Campo por defecto: 'numeral'
-    $sortDirection = $request->input('sort_direction', 'asc'); // Orden por defecto: ascendente
-
-    $query->orderBy($sortField, $sortDirection);
-
-        return $query->paginate($request->per_page ?? 10);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error en CompetidorController@index: '.$e->getMessage());
+    // Verifica que el evento_id del competidor coincida con el que se está enviando
+    if ($request->filled('evento_id') && $competidor->evento_id != $request->evento_id) {
         return response()->json([
-            'error' => 'Error al filtrar competidores',
-            'details' => env('APP_DEBUG') ? $e->getMessage() : null
-        ], 500);
+            'success' => false,
+            'message' => 'No tienes permiso para eliminar este competidor (evento no coincide)',
+        ], 403);
     }
+
+    $competidor->delete();
+
+    return response()->json(['success' => true]);
 }
+
 }

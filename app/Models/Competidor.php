@@ -20,5 +20,11 @@ class Competidor extends Model
         'numeral',
         'tipodesangre',
         'foto_path',
+         'evento_id'
     ];
+
+     public function evento()
+    {
+        return $this->belongsTo(Evento::class);
+    }
 }

@@ -13,7 +13,8 @@ class Tiempo extends Model
         'competidor_ci',
         'etapa',
         'tiempo',
-        'fecha_registro'
+        'fecha_registro',
+         'evento_id'
     ];
 
     /**
@@ -39,5 +40,13 @@ class Tiempo extends Model
     public function competidor()
     {
         return $this->belongsTo(Competidor::class, 'competidor_ci', 'ci');
+    }
+
+    /**
+     * Relación con el modelo Evento
+     */
+    public function evento()
+    {
+        return $this->belongsTo(Evento::class);
     }
 }
