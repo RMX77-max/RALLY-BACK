@@ -17,7 +17,9 @@ use App\Http\Controllers\CronometroController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok', 'time' => now()]);
+});
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
