@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Competidor extends Model
 {
@@ -22,6 +23,19 @@ class Competidor extends Model
         'foto_path',
          'evento_id'
     ];
+
+     protected $appends = ['foto_url'];
+
+    public function getFotoUrlAttribute(): ?string
+{
+    if (!$this->foto_path) {
+        return null;
+    }
+
+    // Construye la URL pública directamente: https://TU-APP/storage/lo-que-sea.jpg
+    return asset('storage/' . ltrim($this->foto_path, '/'));
+}
+
 
      public function evento()
     {
