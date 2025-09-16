@@ -14,19 +14,25 @@ return new class extends Migration
     {
         Schema::create('tiempos', function (Blueprint $table) {
             $table->id();
-            $table->string('competidor_ci'); // Tipo debe coincidir con el tipo de 'ci' en competidores
+            $table->unsignedBigInteger('competidor_id'); // Tipo debe coincidir con el tipo de 'ci' en competidores
             $table->integer('etapa');
             $table->string('tiempo');
             $table->dateTime('fecha_registro');
+            $table->unsignedBigInteger('evento_id');
             $table->timestamps();
 
             // Definición correcta de la foreign key
-            $table->foreign('competidor_ci')
-                  ->references('ci')  // Referencia al campo correcto
+            $table->foreign('competidor_id')
+                  ->references('id')  // Referencia al campo correcto
                   ->on('competidores')
                   ->onDelete('cascade');
 
-            $table->unique(['competidor_ci', 'etapa']);
+            $table->foreign('evento_id')
+                    ->references('id')
+                    ->on('eventos')
+                    ->onDelete('cascade');
+
+            $table->unique(['competidor_id', 'etapa', 'evento_id']);
         });
     }
 

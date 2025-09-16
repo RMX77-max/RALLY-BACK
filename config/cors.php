@@ -6,7 +6,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://rally-front.netlify.app'],
+    'allowed_origins' => ['https://rally-front.netlify.app','http://localhost:9000',],
 
     'allowed_origins_patterns' => [],
 

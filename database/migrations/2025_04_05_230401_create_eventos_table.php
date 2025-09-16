@@ -13,6 +13,13 @@ return new class extends Migration {
             $table->string('ubicacion')->nullable();
             $table->date('fecha')->nullable();
             $table->text('descripcion')->nullable();
+
+            // Nuevo campo para distinguir el tipo de evento
+            $table->enum('tipo_evento', ['simple', 'grande'])
+                  ->default('simple');
+            // simple = pocos corredores, orden por inscripción
+            // con_cupos = grandes eventos, cupos reservados por categoría
+
             $table->timestamps();
         });
     }

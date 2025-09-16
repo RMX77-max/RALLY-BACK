@@ -6,27 +6,36 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('competidores', function (Blueprint $table) {
-            $table->string('ci')->primary(); // Clave primaria (sin auto-incremento)
+            $table->id(); // PK autoincremental
+            $table->unsignedBigInteger('evento_id'); // FK al evento
+
             $table->string('nombre');
             $table->string('ciudad');
             $table->string('team')->nullable();
             $table->string('categoria');
-            $table->integer('numeral');
-            $table->string('tipodesangre')->nullable();
-            $table->string('foto_path')->nullable(); // Ruta de la imagen
+            $table->unsignedInteger('numeral');
+            $table->unsignedInteger('orden_largada')->nullable();
+            $table->string('foto_path')->nullable(); // ruta de la imagen
+
             $table->timestamps();
+
+            // Relaciones y restricciones
+            $table->foreign('evento_id')
+                ->references('id')->on('eventos')
+                ->onDelete('cascade');
+
+            // Evita dorsales duplicados dentro del mismo evento
+            $table->unique(['evento_id', 'numeral']);
+
+            //Indice para mejorar consultas por evento
+            $table->index('evento_id');
+            $table->index('orden_largada');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('competidores');

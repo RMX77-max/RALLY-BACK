@@ -8,20 +8,19 @@ use Illuminate\Support\Facades\Storage;
 class Competidor extends Model
 {
     protected $table = 'competidores'; // Forzar nombre de tabla
-    protected $primaryKey = 'ci'; // Definir la PK personalizada
-    public $incrementing = false; // Desactivar auto-incremento
-    protected $keyType = 'string'; // Tipo de la PK
+    protected $primaryKey = 'id'; // Definir la PK personalizada
+    public $incrementing = true; //  auto-incremento
+    protected $keyType = 'int'; // Tipo de la PK
 
     protected $fillable = [
-        'ci',
         'nombre',
         'ciudad',
         'team',
         'categoria',
         'numeral',
-        'tipodesangre',
         'foto_path',
-         'evento_id'
+         'evento_id',
+            'orden_largada'
     ];
 
      protected $appends = ['foto_url'];
@@ -41,4 +40,10 @@ class Competidor extends Model
     {
         return $this->belongsTo(Evento::class);
     }
+
+    public function tiempos()
+{
+    return $this->hasMany(Tiempo::class);
+}
+
 }

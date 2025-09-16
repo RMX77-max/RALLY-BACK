@@ -12,49 +12,97 @@ class CompetidorController extends Controller
 {
 
     public function store(Request $request)
-    {
-        try {
-            Log::info('Datos recibidos:', $request->all());
+{
+    try {
+        Log::info('Datos recibidos:', $request->all());
 
-            $validated = $request->validate([
-                'ci' => 'required|unique:competidores',
-                'nombre' => 'required',
-                'ciudad' => 'required',
-                'categoria' => 'required',
-                'numeral' => 'required|numeric',
-                'evento_id' => 'required|exists:eventos,id',
-            ]);
+        $validated = $request->validate([
+            'nombre' => 'required',
+            'ciudad' => 'required',
+            'categoria' => 'required',
+            'numeral' => [
+    'required',
+    'numeric',
+    'unique:competidores,numeral,NULL,id,evento_id,' . $request->evento_id
+],
 
-            $fotoPath = null;
-            if ($request->hasFile('foto')) {
-                $fotoPath = $request->file('foto')->store('fotos_competidores', 'public');
+            'evento_id' => 'required|exists:eventos,id',
+        ]);
+
+        // Recuperar el evento para ver su tipo
+        $evento = \App\Models\Evento::findOrFail($validated['evento_id']);
+
+        // Guardar foto si existe
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $fotoPath = $request->file('foto')->store('fotos_competidores', 'public');
+        }
+
+        // Lógica de orden de largada
+        $ordenLargada = null;
+
+        if (!$evento->grande) {
+
+            // Orden secuencial por inscripción
+            $lastOrder = Competidor::where('evento_id', $evento->id)->max('orden_largada');
+            $ordenLargada = $lastOrder ? $lastOrder + 1 : 1;
+
+        }elseif ($evento->grande) {
+
+            // Verificar cupos
+            $cupoCategoria = \App\Models\CupoCategoria::where('evento_id', $evento->id)
+                ->where('categoria', $validated['categoria'])
+                ->first();
+
+            if (!$cupoCategoria) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay cupo configurado para esta categoría'
+                ], 400);
             }
 
-            $competidor = Competidor::create([
-                'ci' => $validated['ci'],
-                'nombre' => $validated['nombre'],
-                'ciudad' => $validated['ciudad'],
-                'team' => $request->team,
-                'categoria' => $validated['categoria'],
-                'numeral' => $validated['numeral'],
-                'tipodesangre' => $request->tipodesangre,
-                'foto_path' => $fotoPath,
-                'evento_id' => $validated['evento_id']
-            ]);
+            $inscritos = Competidor::where('evento_id', $evento->id)
+                ->where('categoria', $validated['categoria'])
+                ->count();
 
-            return response()->json([
-                'success' => true,
-                'data' => $competidor
-            ], 201);
+            if ($inscritos >= $cupoCategoria->cupos) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya no hay cupos disponibles en esta categoría'
+                ], 400);
+            }
 
-        } catch (\Exception $e) {
-            Log::error('Error en store: '.$e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error interno: '.$e->getMessage()
-            ], 500);
+            // Orden largada = correlativo en el evento
+            $lastOrder = Competidor::where('evento_id', $evento->id)->max('orden_largada');
+            $ordenLargada = $lastOrder ? $lastOrder + 1 : 1;
         }
+
+        // Crear competidor
+        $competidor = Competidor::create([
+            'nombre' => $validated['nombre'],
+            'ciudad' => $validated['ciudad'],
+            'team' => $request->team,
+            'categoria' => $validated['categoria'],
+            'numeral' => $validated['numeral'],
+            'foto_path' => $fotoPath,
+            'evento_id' => $validated['evento_id'],
+            'orden_largada' => $ordenLargada,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $competidor
+        ], 201);
+
+    } catch (\Exception $e) {
+        Log::error('Error en store: '.$e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Error interno: '.$e->getMessage()
+        ], 500);
     }
+}
+
 
     public function index(Request $request)
     {
@@ -89,11 +137,10 @@ class CompetidorController extends Controller
         }
     }
 
-   public function update(Request $request, $ci)
+  public function update(Request $request, $id)
 {
-    $competidor = Competidor::findOrFail($ci);
+    $competidor = Competidor::findOrFail($id);
 
-    // Verifica que el evento_id del competidor coincida con el que se está enviando
     if ($request->filled('evento_id') && $competidor->evento_id != $request->evento_id) {
         return response()->json([
             'success' => false,
@@ -109,12 +156,10 @@ class CompetidorController extends Controller
     ]);
 }
 
-
-   public function destroy(Request $request, $ci)
+public function destroy(Request $request, $id)
 {
-    $competidor = Competidor::findOrFail($ci);
+    $competidor = Competidor::findOrFail($id);
 
-    // Verifica que el evento_id del competidor coincida con el que se está enviando
     if ($request->filled('evento_id') && $competidor->evento_id != $request->evento_id) {
         return response()->json([
             'success' => false,
@@ -126,5 +171,6 @@ class CompetidorController extends Controller
 
     return response()->json(['success' => true]);
 }
+
 
 }
