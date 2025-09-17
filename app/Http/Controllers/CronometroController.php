@@ -18,10 +18,14 @@ class CronometroController extends Controller
 
         $cronometro = Cronometro::updateOrCreate(
             ['evento_id' => $request->evento_id, 'etapa' => $request->etapa],
-            ['inicio' => now(), 'activo' => true]
+            ['inicio' => Carbon::now(), 'activo' => true]
         );
 
-        return response()->json(['success' => true, 'cronometro' => $cronometro]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Cronómetro iniciado',
+            'data' => $cronometro
+        ]);
     }
 
     // Obtener el tiempo actual de una etapa
@@ -44,17 +48,19 @@ class CronometroController extends Controller
         }
 
         $inicio = Carbon::parse($cronometro->inicio);
-        $ahora = Carbon::now();
-        $diferencia = $inicio->diff($ahora);
+        $elapsedSeconds = $inicio->diffInSeconds(Carbon::now());
 
         return response()->json([
             'success' => true,
-            'inicio' => $inicio->toDateTimeString(),
-            'tiempo_actual' => sprintf('%02d:%02d:%02d', $diferencia->h, $diferencia->i, $diferencia->s),
+            'data' => [
+                'inicio' => $inicio->toDateTimeString(),
+                'tiempo_actual' => gmdate('H:i:s', $elapsedSeconds),
+                'segundos' => $elapsedSeconds,
+            ]
         ]);
     }
 
-    // Reiniciar o detener cronómetro
+    // Detener cronómetro
     public function detener(Request $request)
     {
         $request->validate([
@@ -67,10 +73,36 @@ class CronometroController extends Controller
             ->first();
 
         if ($cronometro) {
-            $cronometro->activo = false;
-            $cronometro->save();
+            $cronometro->update(['activo' => false]);
         }
 
-        return response()->json(['success' => true, 'cronometro' => $cronometro]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Cronómetro detenido',
+            'data' => $cronometro
+        ]);
+    }
+
+    // Resetear cronómetro
+    public function reset(Request $request)
+    {
+        $request->validate([
+            'evento_id' => 'required|exists:eventos,id',
+            'etapa' => 'required|integer|between:1,6',
+        ]);
+
+        $cronometro = Cronometro::where('evento_id', $request->evento_id)
+            ->where('etapa', $request->etapa)
+            ->first();
+
+        if ($cronometro) {
+            $cronometro->update(['inicio' => null, 'activo' => false]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cronómetro reseteado',
+            'data' => $cronometro
+        ]);
     }
 }

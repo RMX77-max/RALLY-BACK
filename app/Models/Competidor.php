@@ -43,7 +43,7 @@ class Competidor extends Model
 
     public function tiempos()
 {
-    return $this->hasMany(Tiempo::class);
+    return $this->hasMany(Tiempo::class, 'competidor_id', 'id');
 }
 
 }

@@ -28,14 +28,23 @@ class EventoController extends Controller
         $request->validate([
             'nombre' => 'required|string|max:255',
             'fecha' => 'required|date',
-            'ubicacion' => 'nullable|string|max:255'
+            'ubicacion' => 'nullable|string|max:255',
+            'descripcion' => 'nullable|string',
+            'tipo_evento' => 'required|in:simple,grande', // 👈 validamos el tipo
         ]);
 
-        $evento = Evento::create($request->only('nombre', 'fecha', 'ubicacion'));
+        $evento = Evento::create($request->only(
+            'nombre',
+            'fecha',
+            'ubicacion',
+            'descripcion',
+            'tipo_evento'
+        ));
 
         return response()->json([
             'success' => true,
-            'data' => $evento
+            'data' => $evento,
+            'message' => 'Evento creado correctamente'
         ], 201);
     }
 
@@ -55,6 +64,43 @@ class EventoController extends Controller
 
         return response()->json([
             'success' => true,
+            'data' => $evento
+        ]);
+    }
+
+    /**
+     * Actualizar un evento.
+     */
+    public function update(Request $request, $id)
+    {
+        $evento = Evento::find($id);
+
+        if (!$evento) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Evento no encontrado'
+            ], 404);
+        }
+
+        $request->validate([
+            'nombre' => 'sometimes|required|string|max:255',
+            'fecha' => 'sometimes|required|date',
+            'ubicacion' => 'nullable|string|max:255',
+            'descripcion' => 'nullable|string',
+            'tipo_evento' => 'sometimes|required|in:simple,grande',
+        ]);
+
+        $evento->update($request->only(
+            'nombre',
+            'fecha',
+            'ubicacion',
+            'descripcion',
+            'tipo_evento'
+        ));
+
+        return response()->json([
+            'success' => true,
+            'message' => "Evento actualizado correctamente",
             'data' => $evento
         ]);
     }

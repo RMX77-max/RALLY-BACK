@@ -27,6 +27,7 @@ class CompetidorController extends Controller
 ],
 
             'evento_id' => 'required|exists:eventos,id',
+            'foto' => 'nullable|image|max:2048', // opcional, máximo 2MB
         ]);
 
         // Recuperar el evento para ver su tipo
@@ -113,8 +114,10 @@ class CompetidorController extends Controller
                 $query->where('evento_id', $request->evento_id);
             } else {
                 return response()->json([
-                    'error' => 'Debe enviar evento_id en la peticion'
-                ], 400);
+    'success' => false,
+    'message' => 'Debe enviar evento_id en la petición'
+], 400);
+
             }
 
             if ($request->filled('categoria')) {
@@ -137,10 +140,11 @@ class CompetidorController extends Controller
         }
     }
 
-  public function update(Request $request, $id)
+ public function update(Request $request, $id)
 {
     $competidor = Competidor::findOrFail($id);
 
+    // Seguridad: no permitir cambiar de evento
     if ($request->filled('evento_id') && $competidor->evento_id != $request->evento_id) {
         return response()->json([
             'success' => false,
@@ -148,7 +152,27 @@ class CompetidorController extends Controller
         ], 403);
     }
 
-    $competidor->update($request->all());
+    // Validaciones
+    $validated = $request->validate([
+        'nombre' => 'sometimes|string|max:255',
+        'ciudad' => 'sometimes|string|max:255',
+        'team' => 'nullable|string|max:255',
+        'categoria' => 'sometimes|string|max:255',
+        'numeral' => 'sometimes|numeric|unique:competidores,numeral,'.$id.',id,evento_id,'.$competidor->evento_id,
+        'foto' => 'nullable|image|max:2048', // opcional, máximo 2MB
+    ]);
+
+    // Manejo de foto (si se envía una nueva)
+    if ($request->hasFile('foto')) {
+        // Eliminar la anterior si existe
+        if ($competidor->foto_path) {
+            Storage::disk('public')->delete($competidor->foto_path);
+        }
+        $validated['foto_path'] = $request->file('foto')->store('fotos_competidores', 'public');
+    }
+
+    // Actualizar con datos validados
+    $competidor->update($validated);
 
     return response()->json([
         'success' => true,
@@ -156,10 +180,12 @@ class CompetidorController extends Controller
     ]);
 }
 
+
 public function destroy(Request $request, $id)
 {
     $competidor = Competidor::findOrFail($id);
 
+    // Seguridad: verificar evento
     if ($request->filled('evento_id') && $competidor->evento_id != $request->evento_id) {
         return response()->json([
             'success' => false,
@@ -167,10 +193,19 @@ public function destroy(Request $request, $id)
         ], 403);
     }
 
+    // Eliminar foto asociada si existe
+    if ($competidor->foto_path) {
+        Storage::disk('public')->delete($competidor->foto_path);
+    }
+
     $competidor->delete();
 
-    return response()->json(['success' => true]);
+    return response()->json([
+        'success' => true,
+        'message' => 'Competidor eliminado correctamente'
+    ]);
 }
+
 
 
 }

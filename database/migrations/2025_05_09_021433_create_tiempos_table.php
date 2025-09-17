@@ -15,8 +15,8 @@ return new class extends Migration
         Schema::create('tiempos', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('competidor_id'); // Tipo debe coincidir con el tipo de 'ci' en competidores
-            $table->integer('etapa');
-            $table->string('tiempo');
+            $table->unsignedTinyInteger('etapa');
+            $table->decimal('tiempo');
             $table->dateTime('fecha_registro');
             $table->unsignedBigInteger('evento_id');
             $table->timestamps();

@@ -1,10 +1,10 @@
 <?php
 
 use Illuminate\Http\Request;
-use App\Http\Controllers\TiempoController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CompetidorController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\TiempoController;
 use App\Http\Controllers\CronometroController;
 
 /*
@@ -12,34 +12,61 @@ use App\Http\Controllers\CronometroController;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
+| Aquí definimos las rutas de la API para tu sistema de cronometraje.
 |
 */
-Route::get('/health', fn() => response()->json(['status'=>'ok','time'=>now()]));
 
+// Health check
+Route::get('/health', fn() => response()->json(['status' => 'ok', 'time' => now()]));
+
+// Rutas protegidas por sanctum (ejemplo de usuario autenticado)
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::post('/competidores', [CompetidorController::class, 'store']);
 
-Route::get('/competidores', [CompetidorController::class, 'index']);
-// Rutas para tiempos
-Route::post('/tiempos/batch', [TiempoController::class, 'storeBatch']);
-Route::get('/tiempos/etapa/{etapa}', [TiempoController::class, 'porEtapa']);
-Route::put('/competidores/{ci}', [CompetidorController::class, 'update']);
-Route::delete('/competidores/{ci}', [CompetidorController::class, 'destroy']);
-Route::get('/tiempos/general', [TiempoController::class, 'clasificacionGeneral']);
+/*
+|--------------------------------------------------------------------------
+| Competidores
+|--------------------------------------------------------------------------
+*/
+Route::controller(CompetidorController::class)->group(function () {
+    Route::get('/competidores', 'index');
+    Route::post('/competidores', 'store');
+    Route::put('/competidores/{id}', 'update');   // corregido {id}, no {ci}
+    Route::delete('/competidores/{id}', 'destroy');
+});
 
-// Rutas para eventos
-Route::get('/eventos', [EventoController::class, 'index']);
-Route::post('/eventos', [EventoController::class, 'store']);
-Route::get('/eventos/{id}', [EventoController::class, 'show']);
-Route::put('/eventos/{id}', [EventoController::class, 'update']);
-Route::delete('/eventos/{id}', [EventoController::class, 'destroy']);
+/*
+|--------------------------------------------------------------------------
+| Tiempos
+|--------------------------------------------------------------------------
+*/
+Route::prefix('tiempos')->controller(TiempoController::class)->group(function () {
+    Route::post('/batch', 'storeBatch');
+    Route::get('/etapa/{etapa}', 'porEtapa');
+    Route::get('/general', 'clasificacionGeneral');
+});
 
-// Rutas para cronómetros
-Route::post('/cronometro/iniciar', [CronometroController::class, 'iniciar']);
-Route::get('/cronometro/tiempo-actual', [CronometroController::class, 'tiempoActual']);
-Route::post('/cronometro/detener', [CronometroController::class, 'detener']);
+/*
+|--------------------------------------------------------------------------
+| Eventos
+|--------------------------------------------------------------------------
+*/
+Route::controller(EventoController::class)->group(function () {
+    Route::get('/eventos', 'index');
+    Route::post('/eventos', 'store');
+    Route::get('/eventos/{id}', 'show');
+    Route::put('/eventos/{id}', 'update');   // asegúrate que esté implementado en tu controller
+    Route::delete('/eventos/{id}', 'destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Cronómetros
+|--------------------------------------------------------------------------
+*/
+Route::prefix('cronometro')->controller(CronometroController::class)->group(function () {
+    Route::post('/iniciar', 'iniciar');
+    Route::get('/tiempo-actual', 'tiempoActual');
+    Route::post('/detener', 'detener');
+});
