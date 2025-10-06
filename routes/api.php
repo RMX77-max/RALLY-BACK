@@ -2,69 +2,88 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CompetidorController;
-use App\Http\Controllers\EventoController;
-use App\Http\Controllers\TiempoController;
-use App\Http\Controllers\CronometroController;
+use App\Http\Controllers\{
+    CompetidorController,
+    EventoController,
+    TiempoController,
+    CronometroController,
+    GaleriaController,
+    VideoController,
+    CompetidorEventoController,
+    AuthController
+};
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| Rutas públicas
 |--------------------------------------------------------------------------
-|
-| Aquí definimos las rutas de la API para tu sistema de cronometraje.
-|
 */
 
 // Health check
 Route::get('/health', fn() => response()->json(['status' => 'ok', 'time' => now()]));
 
-// Rutas protegidas por sanctum (ejemplo de usuario autenticado)
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+// === AUTENTICACIÓN (públicas) ===
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+// === PÚBLICAS: vistas, datos, galería ===
+Route::get('/galeria', [GaleriaController::class, 'index']);
+Route::get('/videos', [VideoController::class, 'index']);
+Route::get('/competidores-evento', [CompetidorEventoController::class, 'index']);
+
+/*
+|--------------------------------------------------------------------------
+| Rutas protegidas (solo admin con token)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
+
+    // === Cerrar sesión ===
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    // === Competidores evento ===
+
+    Route::post('/competidores-evento', [CompetidorEventoController::class, 'store']);
+    Route::put('/competidores-evento/{id}', [CompetidorEventoController::class, 'update']);
+    Route::post('/competidores-evento/importar', [CompetidorEventoController::class, 'importarExcel']);
+    Route::post('/competidores-evento/{id}/foto', [CompetidorEventoController::class, 'subirFoto']);
+    Route::delete('/competidores-evento/{id}', [CompetidorEventoController::class, 'destroy']);
+
+
+    // === Galería y videos ===
+    Route::post('/galeria', [GaleriaController::class, 'store']);
+    Route::delete('/galeria/{id}', [GaleriaController::class, 'destroy']);
+
+    Route::post('/videos', [VideoController::class, 'store']);
+    Route::delete('/videos/{id}', [VideoController::class, 'destroy']);
 });
 
 /*
 |--------------------------------------------------------------------------
-| Competidores
+| Rutas de cronometraje (pueden mantenerse públicas)
 |--------------------------------------------------------------------------
 */
 Route::controller(CompetidorController::class)->group(function () {
     Route::get('/competidores', 'index');
     Route::post('/competidores', 'store');
-    Route::put('/competidores/{id}', 'update');   // corregido {id}, no {ci}
+    Route::put('/competidores/{id}', 'update');
     Route::delete('/competidores/{id}', 'destroy');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Tiempos
-|--------------------------------------------------------------------------
-*/
 Route::prefix('tiempos')->controller(TiempoController::class)->group(function () {
     Route::post('/batch', 'storeBatch');
     Route::get('/etapa/{etapa}', 'porEtapa');
     Route::get('/general', 'clasificacionGeneral');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Eventos
-|--------------------------------------------------------------------------
-*/
 Route::controller(EventoController::class)->group(function () {
     Route::get('/eventos', 'index');
     Route::post('/eventos', 'store');
     Route::get('/eventos/{id}', 'show');
-    Route::put('/eventos/{id}', 'update');   // asegúrate que esté implementado en tu controller
+    Route::put('/eventos/{id}', 'update');
     Route::delete('/eventos/{id}', 'destroy');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Cronómetros
-|--------------------------------------------------------------------------
-*/
 Route::prefix('cronometro')->controller(CronometroController::class)->group(function () {
     Route::post('/iniciar', 'iniciar');
     Route::get('/tiempo-actual', 'tiempoActual');
