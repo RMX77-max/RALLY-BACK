@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     GaleriaController,
     VideoController,
     CompetidorEventoController,
-    AuthController
+    AuthController,
+    PatrocinadorController
 };
 
 /*
@@ -27,9 +28,17 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // === PÚBLICAS: vistas, datos, galería ===
+Route::get('/patrocinadores', [PatrocinadorController::class, 'index']);
 Route::get('/galeria', [GaleriaController::class, 'index']);
 Route::get('/videos', [VideoController::class, 'index']);
 Route::get('/competidores-evento', [CompetidorEventoController::class, 'index']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/galeria/foto', [GaleriaController::class, 'store']);
+    Route::delete('/galeria/foto/{id}', [GaleriaController::class, 'destroy']);
+    Route::post('/patrocinadores', [PatrocinadorController::class, 'store']);
+    Route::post('/patrocinadores/{id}', [PatrocinadorController::class, 'update']);
+    Route::delete('/patrocinadores/{id}', [PatrocinadorController::class, 'destroy']);
+});
 
 /*
 |--------------------------------------------------------------------------
