@@ -11,7 +11,8 @@ use App\Http\Controllers\{
     VideoController,
     CompetidorEventoController,
     AuthController,
-    PatrocinadorController
+    PatrocinadorController,
+    TiemposArchivoController
 };
 
 /*
@@ -65,6 +66,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/videos', [VideoController::class, 'store']);
     Route::delete('/videos/{id}', [VideoController::class, 'destroy']);
+
+    // === tiempos archivo excel ===
+
+    Route::get   ('/tiempos/archivos',       [TiemposArchivoController::class, 'index']);   // listar
+    Route::post  ('/tiempos/archivos',       [TiemposArchivoController::class, 'store']);   // subir (admin)
+    Route::get   ('/tiempos/archivos/{id}',  [TiemposArchivoController::class, 'show']);    // ver uno
+    Route::delete('/tiempos/archivos/{id}',  [TiemposArchivoController::class, 'destroy']); // borrar (admin)
 });
 
 /*

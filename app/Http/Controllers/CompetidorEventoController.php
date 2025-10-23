@@ -53,11 +53,12 @@ class CompetidorEventoController extends Controller
 
         $competidor = new CompetidorEvento($validated);
 
-        // ✅ Procesar foto si se envía directamente
-        if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('fotos_competidores', 'public');
-            $competidor->foto = asset('storage/' . $path);
-        }
+        // store()
+if ($request->hasFile('foto')) {
+    $path = $request->file('foto')->store('fotos_competidores', 'public');
+    $competidor->foto = $path; // ✅ guarda sólo la ruta relativa
+}
+
 
         $competidor->save();
 
@@ -84,19 +85,18 @@ class CompetidorEventoController extends Controller
 
         $competidor->fill($validated);
 
-        // ✅ Si viene una nueva foto, reemplazar la anterior
-        if ($request->hasFile('foto')) {
-            // Eliminar la vieja si existe
-            if ($competidor->foto) {
-                $relative = Str::after($competidor->foto, '/storage/');
-                if (Storage::disk('public')->exists($relative)) {
-                    Storage::disk('public')->delete($relative);
-                }
-            }
-
-            $path = $request->file('foto')->store('fotos_competidores', 'public');
-            $competidor->foto = asset('storage/' . $path);
+        // update()
+if ($request->hasFile('foto')) {
+    if ($competidor->foto) {
+        $relative = Str::after($competidor->foto, 'storage/'); // soporta valores viejos
+        if (Storage::disk('public')->exists($relative)) {
+            Storage::disk('public')->delete($relative);
         }
+    }
+    $path = $request->file('foto')->store('fotos_competidores', 'public');
+    $competidor->foto = $path; // ✅ relativo
+}
+
 
         $competidor->save();
 
@@ -117,37 +117,42 @@ class CompetidorEventoController extends Controller
 
         $competidor = CompetidorEvento::findOrFail($id);
 
-        if ($competidor->foto) {
-            $relative = Str::after($competidor->foto, '/storage/');
-            if (Storage::disk('public')->exists($relative)) {
-                Storage::disk('public')->delete($relative);
-            }
-        }
+        // subirFoto()
+if ($competidor->foto) {
+    $relative = Str::after($competidor->foto, 'storage/'); // soporta absolutas antiguas
+    if (Storage::disk('public')->exists($relative)) {
+        Storage::disk('public')->delete($relative);
+    }
+}
+$path = $request->file('foto')->store('fotos_competidores', 'public');
+$competidor->foto = $path; // ✅ relativo
+$competidor->save();
 
-        $path = $request->file('foto')->store('fotos_competidores', 'public');
-        $competidor->foto = asset('storage/' . $path);
-        $competidor->save();
+return response()->json([
+    'message' => 'Foto actualizada correctamente.',
+    'foto' => asset('storage/' . $competidor->foto) // ✅ devuelve absoluta al front
+]);
 
-        return response()->json([
-            'message' => 'Foto actualizada correctamente.',
-            'foto' => $competidor->foto
-        ]);
     }
 
     // ============================================
     // 🗑️ Eliminar competidor
     // ============================================
-    public function destroy($id)
+public function destroy($id)
 {
     $competidor = CompetidorEvento::findOrFail($id);
 
-    if ($competidor->foto && Storage::disk('public')->exists($competidor->foto)) {
-        Storage::disk('public')->delete($competidor->foto);
+    if ($competidor->foto) {
+        $relative = Str::after($competidor->foto, 'storage/'); // por si quedó absoluta vieja
+        if (Storage::disk('public')->exists($relative)) {
+            Storage::disk('public')->delete($relative);
+        }
     }
 
     $competidor->delete();
 
     return response()->json(['message' => 'Competidor eliminado correctamente.']);
 }
+
 
 }
