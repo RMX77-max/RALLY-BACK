@@ -1,6 +1,14 @@
-FROM webdevops/php-nginx:8.2
+FROM webdevops/php-nginx:8.3
 
 WORKDIR /app
+
+# Ajustes PHP útiles (webdevops soporta estas envs)
+ENV PHP_DATE_TIMEZONE=UTC \
+    PHP_DISPLAY_ERRORS=0 \
+    PHP_MEMORY_LIMIT=256M \
+    PHP_UPLOAD_MAX_FILESIZE=20M \
+    PHP_POST_MAX_SIZE=20M \
+    WEB_DOCUMENT_ROOT=/app/public
 
 # Extensiones y utilidades necesarias
 RUN apt-get update && apt-get install -y \
@@ -8,19 +16,20 @@ RUN apt-get update && apt-get install -y \
  && docker-php-ext-install pdo pdo_pgsql \
  && rm -rf /var/lib/apt/lists/*
 
-# (Opcional) instala otras extensiones si tu app las necesita:
-# RUN docker-php-ext-install bcmath intl exif gd
-
 # Composer desde la imagen oficial
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copia proyecto
+# --- capa de dependencias para cachear composer ---
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# Copia el resto del proyecto
 COPY . .
 
-# Instala dependencias de producción
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Vuelve a optimizar autoload por si hay clases nuevas
+RUN composer dump-autoload -o
 
-# Crea directorios y fija permisos para que Laravel pueda escribir
+# Directorios y permisos para Laravel
 RUN mkdir -p \
       storage/logs \
       storage/framework/cache \
@@ -30,15 +39,10 @@ RUN mkdir -p \
   && chown -R application:application /app \
   && chmod -R 775 storage bootstrap/cache
 
-# Copia el script de arranque y dale permisos
+# Script de arranque
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
 
-# Nginx servirá /public
-ENV WEB_DOCUMENT_ROOT=/app/public
-
-# Render expone puerto automáticamente; esta imagen usa 8080
 EXPOSE 8080
 
-# Arranque: script que hace migraciones, storage:link, cachea y luego lanza supervisord
 CMD ["/usr/local/bin/start.sh"]
