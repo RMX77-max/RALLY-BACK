@@ -1,5 +1,5 @@
 <?php
-// app/Http/Controllers/TiemposArchivoController.php
+
 namespace App\Http\Controllers;
 
 use App\Models\TiemposArchivo;
@@ -9,17 +9,16 @@ use Illuminate\Support\Facades\Storage;
 
 class TiemposArchivoController extends Controller
 {
-    // ✅ Listar uploads (para elegir uno y mostrarlo)
+    // GET /api/tiempos/archivos  (pública)
     public function index(Request $request)
     {
         return TiemposArchivo::orderByDesc('id')
             ->get(['id','nombre_original','path','total_filas','created_at']);
     }
 
-    // ✅ Subir y parsear (solo admin)
+    // POST /api/tiempos/archivos  (protegida con token)
     public function store(Request $request)
     {
-        // Si tienes un campo role/flag en Users, aquí valida admin:
         // if ($request->user()?->role !== 'admin') abort(403, 'Solo admin');
 
         $request->validate([
@@ -42,7 +41,7 @@ class TiemposArchivoController extends Controller
             'nombre_original' => $nombreOriginal,
             'path'            => $path,
             'columnas'        => $parsed['columnas'],
-            'filas'           => $parsed['filas'],   // si será MUY grande, ver nota abajo
+            'filas'           => $parsed['filas'],
             'total_filas'     => $parsed['total_filas'],
         ]);
 
@@ -56,7 +55,7 @@ class TiemposArchivoController extends Controller
         ], 201);
     }
 
-    // ✅ Obtener un upload específico (para mostrar la tabla)
+    // GET /api/tiempos/archivos/{id}  (pública)
     public function show(Request $request, int $id)
     {
         $r = TiemposArchivo::findOrFail($id);
@@ -70,7 +69,7 @@ class TiemposArchivoController extends Controller
         ]);
     }
 
-    // ✅ Borrar (solo admin)
+    // DELETE /api/tiempos/archivos/{id}  (protegida con token)
     public function destroy(Request $request, int $id)
     {
         // if ($request->user()?->role !== 'admin') abort(403, 'Solo admin');
