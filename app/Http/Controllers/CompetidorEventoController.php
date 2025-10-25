@@ -130,7 +130,7 @@ class CompetidorEventoController extends Controller
         $this->ensureDirs();
 
         if ($request->hasFile('foto')) {
-            // borra la anterior (soporta absoluta vieja)
+            $request->validate(['foto' => 'image|mimes:jpeg,jpg,png,webp|max:4096']);
             if ($competidor->foto) {
                 $rel = $this->toRelative($competidor->foto);
                 if ($rel && Storage::disk('public')->exists($rel)) {
