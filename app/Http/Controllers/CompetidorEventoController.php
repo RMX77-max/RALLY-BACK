@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 class CompetidorEventoController extends Controller
 {
     // ============================================
-    // 📥 Importar desde Excel
+    // 📥 Importar desde Excel (NO TOCAR)
     // ============================================
     public function importarExcel(Request $request)
     {
@@ -30,12 +30,47 @@ class CompetidorEventoController extends Controller
         }
     }
 
+    // Helpers -------------- //
+
+    /** Normaliza lo guardado en DB (absoluta/relativa) a un path relativo del disco public */
+    private function toRelative(string $stored = null): ?string
+    {
+        if (!$stored) return null;
+        // soporta valores tipo '/storage/...' o 'https://.../storage/...'
+        $after = Str::after($stored, 'storage/');
+        return $after === $stored ? $stored : $after;
+    }
+
+    /** Devuelve URL absoluta desde path relativo del disco public */
+    private function urlFromPath(?string $path): ?string
+    {
+        return $path ? asset('storage/' . ltrim($path, '/')) : null;
+    }
+
+    /** Asegura que existan los directorios de fotos */
+    private function ensureDirs(): void
+    {
+        Storage::disk('public')->makeDirectory('fotos_competidores');
+    }
+
     // ============================================
     // 🧾 Listar todos los competidores
     // ============================================
     public function index()
     {
-        return CompetidorEvento::orderBy('numero', 'asc')->get();
+        return CompetidorEvento::orderBy('numero', 'asc')->get()
+            ->map(function ($c) {
+                $rel = $this->toRelative($c->foto);
+                return [
+                    'id'        => $c->id,
+                    'nombre'    => $c->nombre,
+                    'categoria' => $c->categoria,
+                    'numero'    => $c->numero,
+                    'team'      => $c->team,
+                    'foto'      => $rel,                           // path relativo en DB
+                    'foto_url'  => $this->urlFromPath($rel),       // URL absoluta para el front
+                ];
+            });
     }
 
     // ============================================
@@ -44,27 +79,35 @@ class CompetidorEventoController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
+            'nombre'    => 'required|string|max:255',
             'categoria' => 'nullable|string|max:100',
-            'numero' => 'required|integer',
-            'team' => 'nullable|string|max:100',
-            'foto' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'numero'    => 'required|integer',
+            'team'      => 'nullable|string|max:100',
+            'foto'      => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
         ]);
+
+        $this->ensureDirs();
 
         $competidor = new CompetidorEvento($validated);
 
-        // store()
-if ($request->hasFile('foto')) {
-    $path = $request->file('foto')->store('fotos_competidores', 'public');
-    $competidor->foto = $path; // ✅ guarda sólo la ruta relativa
-}
-
+        if ($request->hasFile('foto')) {
+            $path = $request->file('foto')->store('fotos_competidores', 'public');
+            $competidor->foto = $path; // guarda solo relativo
+        }
 
         $competidor->save();
 
         return response()->json([
-            'message' => 'Competidor agregado correctamente.',
-            'competidor' => $competidor
+            'message'    => 'Competidor agregado correctamente.',
+            'competidor' => [
+                'id'        => $competidor->id,
+                'nombre'    => $competidor->nombre,
+                'categoria' => $competidor->categoria,
+                'numero'    => $competidor->numero,
+                'team'      => $competidor->team,
+                'foto'      => $competidor->foto,
+                'foto_url'  => $this->urlFromPath($competidor->foto),
+            ],
         ], 201);
     }
 
@@ -76,38 +119,46 @@ if ($request->hasFile('foto')) {
         $competidor = CompetidorEvento::findOrFail($id);
 
         $validated = $request->validate([
-            'nombre' => 'sometimes|required|string|max:255',
+            'nombre'    => 'sometimes|required|string|max:255',
             'categoria' => 'nullable|string|max:100',
-            'numero' => 'sometimes|required|integer',
-            'team' => 'nullable|string|max:100',
-            'foto' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
+            'numero'    => 'sometimes|required|integer',
+            'team'      => 'nullable|string|max:100',
+            'foto'      => 'nullable|image|mimes:jpeg,jpg,png,webp|max:4096',
         ]);
 
         $competidor->fill($validated);
+        $this->ensureDirs();
 
-        // update()
-if ($request->hasFile('foto')) {
-    if ($competidor->foto) {
-        $relative = Str::after($competidor->foto, 'storage/'); // soporta valores viejos
-        if (Storage::disk('public')->exists($relative)) {
-            Storage::disk('public')->delete($relative);
+        if ($request->hasFile('foto')) {
+            // borra la anterior (soporta absoluta vieja)
+            if ($competidor->foto) {
+                $rel = $this->toRelative($competidor->foto);
+                if ($rel && Storage::disk('public')->exists($rel)) {
+                    Storage::disk('public')->delete($rel);
+                }
+            }
+            $path = $request->file('foto')->store('fotos_competidores', 'public');
+            $competidor->foto = $path;
         }
-    }
-    $path = $request->file('foto')->store('fotos_competidores', 'public');
-    $competidor->foto = $path; // ✅ relativo
-}
-
 
         $competidor->save();
 
         return response()->json([
-            'message' => 'Competidor actualizado correctamente.',
-            'competidor' => $competidor
+            'message'    => 'Competidor actualizado correctamente.',
+            'competidor' => [
+                'id'        => $competidor->id,
+                'nombre'    => $competidor->nombre,
+                'categoria' => $competidor->categoria,
+                'numero'    => $competidor->numero,
+                'team'      => $competidor->team,
+                'foto'      => $competidor->foto,
+                'foto_url'  => $this->urlFromPath($competidor->foto),
+            ],
         ]);
     }
 
     // ============================================
-    // 🖼️ Subir o actualizar solo la foto (ruta auxiliar)
+    // 🖼️ Subir o actualizar solo la foto
     // ============================================
     public function subirFoto(Request $request, $id)
     {
@@ -116,43 +167,42 @@ if ($request->hasFile('foto')) {
         ]);
 
         $competidor = CompetidorEvento::findOrFail($id);
+        $this->ensureDirs();
 
-        // subirFoto()
-if ($competidor->foto) {
-    $relative = Str::after($competidor->foto, 'storage/'); // soporta absolutas antiguas
-    if (Storage::disk('public')->exists($relative)) {
-        Storage::disk('public')->delete($relative);
-    }
-}
-$path = $request->file('foto')->store('fotos_competidores', 'public');
-$competidor->foto = $path; // ✅ relativo
-$competidor->save();
+        if ($competidor->foto) {
+            $rel = $this->toRelative($competidor->foto);
+            if ($rel && Storage::disk('public')->exists($rel)) {
+                Storage::disk('public')->delete($rel);
+            }
+        }
 
-return response()->json([
-    'message' => 'Foto actualizada correctamente.',
-    'foto' => asset('storage/' . $competidor->foto) // ✅ devuelve absoluta al front
-]);
+        $path = $request->file('foto')->store('fotos_competidores', 'public');
+        $competidor->foto = $path;
+        $competidor->save();
 
+        return response()->json([
+            'message' => 'Foto actualizada correctamente.',
+            'foto'    => $competidor->foto,
+            'foto_url'=> $this->urlFromPath($competidor->foto),
+        ]);
     }
 
     // ============================================
     // 🗑️ Eliminar competidor
     // ============================================
-public function destroy($id)
-{
-    $competidor = CompetidorEvento::findOrFail($id);
+    public function destroy($id)
+    {
+        $competidor = CompetidorEvento::findOrFail($id);
 
-    if ($competidor->foto) {
-        $relative = Str::after($competidor->foto, 'storage/'); // por si quedó absoluta vieja
-        if (Storage::disk('public')->exists($relative)) {
-            Storage::disk('public')->delete($relative);
+        if ($competidor->foto) {
+            $rel = $this->toRelative($competidor->foto);
+            if ($rel && Storage::disk('public')->exists($rel)) {
+                Storage::disk('public')->delete($rel);
+            }
         }
+
+        $competidor->delete();
+
+        return response()->json(['message' => 'Competidor eliminado correctamente.']);
     }
-
-    $competidor->delete();
-
-    return response()->json(['message' => 'Competidor eliminado correctamente.']);
-}
-
-
 }
