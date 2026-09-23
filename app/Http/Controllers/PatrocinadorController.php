@@ -29,7 +29,7 @@ class PatrocinadorController extends Controller
     // 🔹 Listar todos
     public function index()
     {
-        return Patrocinador::orderByDesc('id')->get()
+        return Patrocinador::where('activo', true)->orderBy('orden')->orderByDesc('id')->get()
             ->map(function ($p) {
                 $rel = $this->toRelative($p->imagen);
                 return [
@@ -38,6 +38,7 @@ class PatrocinadorController extends Controller
                     'descripcion' => $p->descripcion,
                     'imagen'      => $rel,                    // path relativo en DB
                     'imagen_url'  => $this->urlFromPath($rel) // URL absoluta para el front
+                    ,'url' => $p->url, 'tipo' => $p->tipo, 'orden' => $p->orden
                 ];
             });
     }
@@ -49,6 +50,8 @@ class PatrocinadorController extends Controller
             'titulo'      => 'required|string|max:255',
             'descripcion' => 'required|string',
             'imagen'      => 'nullable|mimes:jpg,jpeg,png,webp|max:8192',
+            'evento_id' => 'nullable|exists:eventos,id', 'url' => 'nullable|url',
+            'tipo' => 'nullable|in:patrocinador,institucion,colaborador', 'orden' => 'nullable|integer|min:0',
         ]);
 
         $this->ensureDirs();
@@ -62,6 +65,8 @@ class PatrocinadorController extends Controller
             'titulo'      => $request->titulo,
             'descripcion' => $request->descripcion,
             'imagen'      => $path,
+            'evento_id' => $request->evento_id, 'url' => $request->url, 'tipo' => $request->tipo ?? 'patrocinador',
+            'orden' => $request->integer('orden'), 'activo' => true,
         ]);
 
         return response()->json([
@@ -85,10 +90,16 @@ class PatrocinadorController extends Controller
             'titulo'      => 'required|string|max:255',
             'descripcion' => 'required|string',
             'imagen'      => 'nullable|mimes:jpg,jpeg,png,webp|max:8192',
+            'url' => 'nullable|url', 'tipo' => 'nullable|in:patrocinador,institucion,colaborador',
+            'orden' => 'nullable|integer|min:0', 'activo' => 'nullable|boolean',
         ]);
 
         $pat->titulo      = $request->titulo;
         $pat->descripcion = $request->descripcion;
+        $pat->url = $request->url;
+        $pat->tipo = $request->tipo ?? $pat->tipo;
+        $pat->orden = $request->integer('orden', $pat->orden);
+        if ($request->has('activo')) $pat->activo = $request->boolean('activo');
 
         $this->ensureDirs();
 

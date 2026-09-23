@@ -13,6 +13,7 @@ class Patrocinador extends Model
     protected $fillable = [
         'titulo',
         'descripcion',
-        'imagen',
+        'imagen', 'evento_id', 'url', 'tipo', 'orden', 'activo',
     ];
+    protected $casts = ['activo' => 'boolean'];
 }

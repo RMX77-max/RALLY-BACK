@@ -21,6 +21,8 @@ class Competidor extends Model
         'foto_path',
          'evento_id',
             'orden_largada'
+        ,'categoria_id', 'equipo_id', 'pais', 'vehiculo', 'copiloto',
+        'biografia', 'frase', 'foto_portada', 'destacado', 'orden', 'estado'
     ];
 
      protected $appends = ['foto_url'];
@@ -45,5 +47,11 @@ class Competidor extends Model
 {
     return $this->hasMany(Tiempo::class, 'competidor_id', 'id');
 }
+
+    public function categoriaRelacion() { return $this->belongsTo(Categoria::class, 'categoria_id'); }
+    public function equipo() { return $this->belongsTo(Equipo::class); }
+    public function resultados() { return $this->hasMany(Resultado::class); }
+
+    protected $casts = ['destacado' => 'boolean'];
 
 }

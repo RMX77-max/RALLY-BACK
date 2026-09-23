@@ -6,7 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class Evento extends Model
 {
-    protected $fillable = ['nombre', 'fecha', 'ubicacion', 'descripcion', 'tipo_evento'];
+    protected $fillable = [
+        'nombre', 'edicion', 'fecha', 'fecha_fin', 'ubicacion', 'descripcion',
+        'lema', 'texto_introductorio', 'tipo_evento', 'estado', 'activo',
+    ];
+
+    protected $casts = [
+        'fecha' => 'date',
+        'fecha_fin' => 'date',
+        'activo' => 'boolean',
+    ];
 
     public function competidores()
     {
@@ -22,4 +31,11 @@ class Evento extends Model
     {
         return $this->hasMany(CupoCategoria::class);
     }
+
+    public function categorias() { return $this->hasMany(Categoria::class); }
+    public function etapas() { return $this->hasMany(Etapa::class); }
+    public function cronograma() { return $this->hasMany(Cronograma::class); }
+    public function banners() { return $this->hasMany(Banner::class); }
+    public function recorrido() { return $this->hasOne(Recorrido::class); }
+    public function equipos() { return $this->hasMany(Equipo::class); }
 }
