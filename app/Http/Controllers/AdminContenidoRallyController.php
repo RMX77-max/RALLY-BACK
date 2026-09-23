@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\{Banner, Categoria, Cronograma, Equipo, Etapa, Evento, Recorrido, Resultado};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class AdminContenidoRallyController extends Controller
@@ -64,9 +65,19 @@ class AdminContenidoRallyController extends Controller
 
     public function guardarCronograma(Request $request, Evento $evento, ?Cronograma $cronograma = null)
     {
+        if ($cronograma?->exists) {
+            abort_unless($cronograma->evento_id === $evento->id, 404);
+        }
         $data = $request->validate(['fecha' => 'required|date', 'hora' => 'nullable|date_format:H:i', 'actividad' => 'required|string|max:200', 'ubicacion' => 'nullable|string|max:200', 'descripcion' => 'nullable|string', 'orden' => 'integer|min:0', 'activo' => 'boolean']);
         $model = $cronograma?->exists ? tap($cronograma)->update($data) : $evento->cronograma()->create($data);
         return response()->json(['data' => $model->fresh()], $cronograma?->exists ? 200 : 201);
+    }
+
+    public function eliminarCronograma(Evento $evento, Cronograma $cronograma)
+    {
+        abort_unless($cronograma->evento_id === $evento->id, 404);
+        $cronograma->delete();
+        return response()->json(['message' => 'Actividad eliminada correctamente.']);
     }
 
     public function guardarBanner(Request $request, Evento $evento, ?Banner $banner = null)
@@ -78,8 +89,28 @@ class AdminContenidoRallyController extends Controller
 
     public function guardarRecorrido(Request $request, Evento $evento)
     {
-        $data = $request->validate(['imagen_mapa' => 'nullable|string', 'url_google_maps' => 'nullable|url', 'archivo_recorrido' => 'nullable|string', 'descripcion' => 'nullable|string', 'activo' => 'boolean']);
-        return response()->json(['data' => Recorrido::updateOrCreate(['evento_id' => $evento->id], $data)]);
+        $url = trim((string) $request->input('url_google_maps', ''));
+        if (preg_match('/<iframe[^>]+src=["\']([^"\']+)["\']/i', $url, $match)) {
+            $url = html_entity_decode($match[1]);
+        }
+        if ($url !== '' && !preg_match('/^https?:\/\//i', $url)) {
+            $url = 'https://'.$url;
+        }
+        $request->merge(['url_google_maps' => $url ?: null]);
+
+        $data = $request->validate([
+            'imagen_mapa' => 'nullable|string|max:2048',
+            'url_google_maps' => 'nullable|url:http,https|max:2048',
+            'archivo_recorrido' => 'nullable|string|max:2048',
+            'descripcion' => 'nullable|string',
+            'activo' => 'boolean',
+        ]);
+        $anterior = Recorrido::where('evento_id', $evento->id)->value('imagen_mapa');
+        $recorrido = Recorrido::updateOrCreate(['evento_id' => $evento->id], $data);
+        if ($anterior && !empty($data['imagen_mapa']) && $anterior !== $data['imagen_mapa'] && !preg_match('/^https?:\/\//i', $anterior)) {
+            Storage::disk('public')->delete($anterior);
+        }
+        return response()->json(['data' => $recorrido]);
     }
 
     public function publicarResultados(Request $request, Evento $evento)

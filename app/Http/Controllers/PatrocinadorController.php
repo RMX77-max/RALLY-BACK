@@ -26,6 +26,15 @@ class PatrocinadorController extends Controller
         Storage::disk('public')->makeDirectory('patrocinadores');
     }
 
+    private function normalizeUrl(Request $request): void
+    {
+        $url = trim((string) $request->input('url', ''));
+        if ($url !== '' && !preg_match('/^https?:\/\//i', $url)) {
+            $url = 'https://'.$url;
+        }
+        $request->merge(['url' => $url ?: null]);
+    }
+
     // 🔹 Listar todos
     public function index()
     {
@@ -46,11 +55,12 @@ class PatrocinadorController extends Controller
     // 🔹 Crear (admin)
     public function store(Request $request)
     {
+        $this->normalizeUrl($request);
         $request->validate([
             'titulo'      => 'required|string|max:255',
             'descripcion' => 'required|string',
             'imagen'      => 'nullable|mimes:jpg,jpeg,png,webp|max:8192',
-            'evento_id' => 'nullable|exists:eventos,id', 'url' => 'nullable|url',
+            'evento_id' => 'nullable|exists:eventos,id', 'url' => 'nullable|url:http,https|max:255',
             'tipo' => 'nullable|in:patrocinador,institucion,colaborador', 'orden' => 'nullable|integer|min:0',
         ]);
 
@@ -85,12 +95,13 @@ class PatrocinadorController extends Controller
     public function update(Request $request, $id)
     {
         $pat = Patrocinador::findOrFail($id);
+        $this->normalizeUrl($request);
 
         $request->validate([
             'titulo'      => 'required|string|max:255',
             'descripcion' => 'required|string',
             'imagen'      => 'nullable|mimes:jpg,jpeg,png,webp|max:8192',
-            'url' => 'nullable|url', 'tipo' => 'nullable|in:patrocinador,institucion,colaborador',
+            'url' => 'nullable|url:http,https|max:255', 'tipo' => 'nullable|in:patrocinador,institucion,colaborador',
             'orden' => 'nullable|integer|min:0', 'activo' => 'nullable|boolean',
         ]);
 

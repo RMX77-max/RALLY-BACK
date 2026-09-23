@@ -48,8 +48,12 @@ Route::get('/rally/patrocinadores', [MultimediaRallyController::class, 'patrocin
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/archivos', [ArchivoRallyController::class, 'store']);
     Route::post('/admin/galeria', [MultimediaRallyController::class, 'guardarFoto']);
+    Route::get('/admin/eventos/{evento}/galeria', [MultimediaRallyController::class, 'administrarGaleria']);
+    Route::post('/admin/galeria/{galeria}', [MultimediaRallyController::class, 'actualizarFoto']);
     Route::delete('/admin/galeria/{galeria}', [MultimediaRallyController::class, 'eliminarFoto']);
     Route::post('/admin/videos', [MultimediaRallyController::class, 'guardarVideo']);
+    Route::get('/admin/eventos/{evento}/videos', [MultimediaRallyController::class, 'administrarVideos']);
+    Route::put('/admin/videos/{video}', [MultimediaRallyController::class, 'actualizarVideo']);
     Route::delete('/admin/videos/{video}', [MultimediaRallyController::class, 'eliminarVideo']);
     Route::post('/admin/pilotos', [PilotoRallyController::class, 'store']);
     Route::match(['put', 'post'], '/admin/pilotos/{competidor}', [PilotoRallyController::class, 'update']);
@@ -68,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/admin/eventos/{evento}/etapas/{etapa}', [AdminContenidoRallyController::class, 'eliminarEtapa']);
     Route::post('/admin/eventos/{evento}/cronograma', [AdminContenidoRallyController::class, 'guardarCronograma']);
     Route::put('/admin/eventos/{evento}/cronograma/{cronograma}', [AdminContenidoRallyController::class, 'guardarCronograma']);
+    Route::delete('/admin/eventos/{evento}/cronograma/{cronograma}', [AdminContenidoRallyController::class, 'eliminarCronograma']);
     Route::post('/admin/eventos/{evento}/banners', [AdminContenidoRallyController::class, 'guardarBanner']);
     Route::put('/admin/eventos/{evento}/banners/{banner}', [AdminContenidoRallyController::class, 'guardarBanner']);
     Route::put('/admin/eventos/{evento}/recorrido', [AdminContenidoRallyController::class, 'guardarRecorrido']);
